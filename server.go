@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html"
@@ -84,6 +86,16 @@ func main() {
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Println("Get error here")
+		log.Fatal(err)
+	}
+	query := `CREATE TABLE IF NOT EXISTS todos (item text)`
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFunc()
+
+	_, err = db.ExecContext(ctx, query)
+	if err != nil {
+		log.Printf("Error %s when creating product table", err)
 		log.Fatal(err)
 	}
 
