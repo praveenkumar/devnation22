@@ -11,6 +11,21 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var (
+	host     = getEnv("DB_HOST", "localhost")
+	port     = getEnv("DB_PORT", "5432")
+	user     = getEnv("POSTGRESQL_USER", "userAKT")
+	password = getEnv("POSTGRESQL_PASSWORD", "Rf7uP4p1bbusAIoV")
+	dbname   = getEnv("POSTGRESQL_DATABASE", "sampledb")
+)
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
 func indexHandler(c *fiber.Ctx, db *sql.DB) error {
 	var res string
 	var todos []string
@@ -64,7 +79,7 @@ func deleteHandler(c *fiber.Ctx, db *sql.DB) error {
 }
 
 func main() {
-	connStr := "postgresql://userAKT:Rf7uP4p1bbusAIoV@127.0.0.1:5432/sampledb?sslmode=disable"
+	connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
 	// Connect to database
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
