@@ -3,21 +3,27 @@ package main
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
+	"github.com/gofiber/template/html"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/template/html"
 	_ "github.com/lib/pq"
 )
+
+//go:embed public/*
+var public embed.FS
 
 var (
 	host     = getEnv("DB_HOST", "localhost")
 	port     = getEnv("DB_PORT", "5432")
-	user     = getEnv("POSTGRESQL_USER", "userAKT")
-	password = getEnv("POSTGRESQL_PASSWORD", "Rf7uP4p1bbusAIoV")
+	user     = getEnv("POSTGRESQL_USER", "userRD6")
+	password = getEnv("POSTGRESQL_PASSWORD", "sdPHtjUHy65XOyLa")
 	dbname   = getEnv("POSTGRESQL_DATABASE", "sampledb")
 )
 
@@ -124,6 +130,11 @@ func main() {
 	if port == "" {
 		port = "3000"
 	}
-	app.Static("/", "./public")
+
+	app.Use("/", filesystem.New(filesystem.Config{
+		Root:       http.FS(public),
+		PathPrefix: "public",
+		Browse:     true,
+	}))
 	log.Fatalln(app.Listen(fmt.Sprintf(":%v", port)))
 }
