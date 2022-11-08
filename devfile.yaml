@@ -1,0 +1,81 @@
+commands:
+- exec:
+    commandLine: GOCACHE=${PROJECT_SOURCE}/.cache go build server.go
+    component: runtime
+    group:
+      isDefault: true
+      kind: build
+    hotReloadCapable: false
+    workingDir: ${PROJECT_SOURCE}
+  id: build
+- exec:
+    commandLine: ./server
+    component: runtime
+    group:
+      isDefault: true
+      kind: run
+    hotReloadCapable: false
+    workingDir: ${PROJECT_SOURCE}
+  id: run
+components:
+- container:
+    args:
+    - tail
+    - -f
+    - /dev/null
+    dedicatedPod: false
+    endpoints:
+    - name: port-3000-tcp
+      protocol: tcp
+      secure: false
+      targetPort: 3000
+    image: quay.io/devfile/golang:latest
+    memoryLimit: 1024Mi
+    mountSources: true
+  name: runtime
+- kubernetes:
+    inlined: |
+      apiVersion: binding.operators.coreos.com/v1alpha1
+      kind: ServiceBinding
+      metadata:
+        creationTimestamp: null
+        name: todo-cluster-sample
+      spec:
+        application:
+          group: apps
+          kind: Deployment
+          name: todo-app
+          version: v1
+        bindAsFiles: false
+        detectBindingResources: true
+        services:
+        - group: postgresql.k8s.enterprisedb.io
+          id: todo-cluster-sample
+          kind: Cluster
+          name: cluster-sample
+          resource: clusters
+          version: v1
+      status:
+        secret: ""
+  name: todo-cluster-sample
+metadata:
+  description: Go is an open source programming language that makes it easy to build
+    simple, reliable, and efficient software.
+  displayName: Go Runtime
+  icon: https://raw.githubusercontent.com/devfile-samples/devfile-stack-icons/main/golang.svg
+  language: Go
+  name: todo
+  projectType: Go
+  provider: Red Hat
+  tags:
+  - Go
+  version: 1.0.2
+schemaVersion: 2.1.0
+starterProjects:
+- description: A Go project with a simple HTTP server
+  git:
+    checkoutFrom:
+      revision: main
+    remotes:
+      origin: https://github.com/devfile-samples/devfile-stack-go.git
+  name: go-starter
