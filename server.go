@@ -14,11 +14,11 @@ import (
 )
 
 var (
-	host     = getEnv("DB_HOST", "localhost")
+	host     = getEnv("CLUSTER_HOST", "localhost")
 	port     = getEnv("DB_PORT", "5432")
-	user     = getEnv("POSTGRESQL_USER", "userAKT")
-	password = getEnv("POSTGRESQL_PASSWORD", "Rf7uP4p1bbusAIoV")
-	dbname   = getEnv("POSTGRESQL_DATABASE", "sampledb")
+	user     = getEnv("CLUSTER_USERNAME", "userAKT")
+	password = getEnv("CLUSTER_PASSWORD", "Rf7uP4p1bbusAIoV")
+	dbname   = getEnv("CLUSTER_DATABASE", "sampledb")
 )
 
 func getEnv(key, fallback string) string {
