@@ -86,6 +86,10 @@ func deleteHandler(c *fiber.Ctx, db *sql.DB) error {
 	return c.SendString("deleted")
 }
 
+func healthHandler(c *fiber.Ctx) error {
+	return c.SendString("health check")
+}
+
 func main() {
 	connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
 	// Connect to database
@@ -124,6 +128,10 @@ func main() {
 
 	app.Delete("/delete", func(c *fiber.Ctx) error {
 		return deleteHandler(c, db)
+	})
+
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return healthHandler(c)
 	})
 
 	port := os.Getenv("PORT")
