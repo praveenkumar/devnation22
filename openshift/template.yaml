@@ -1,0 +1,289 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  app: todo-psql-example
+  template: todo-psql-example
+message: |-
+  The following service(s) have been created in your project: ${NAME}, ${DATABASE_SERVICE_NAME}.
+
+  For more information about using this template, including OpenShift considerations, see https://github.com/praveenkumar/devnation22
+metadata:
+  annotations:
+    description: |-
+      An example Todo application with a PostgreSQL database. For more information about using this template, including OpenShift considerations, see https://github.com/praveenkumar/devnation22.
+
+      WARNING: Any data stored will be lost upon pod destruction. Only use this template for testing.
+    iconClass: icon-python
+    openshift.io/display-name: Todo + PostgreSQL (Ephemeral)
+    openshift.io/documentation-url: https://github.com/praveenkumar/devnation22
+    openshift.io/long-description: This template defines resources needed to develop
+      a Todo based application, including a build configuration, application deployment
+      configuration, and database deployment configuration.  The database is stored
+      in non-persistent storage, so this configuration should be used for experimental
+      purposes only.
+    openshift.io/provider-display-name: Red Hat, Inc.
+    openshift.io/support-url: https://access.redhat.com
+    samples.operator.openshift.io/version: 4.11.7
+    tags: quickstart,golang,todo
+    template.openshift.io/bindable: "false"
+  creationTimestamp: "2022-10-05T05:21:16Z"
+  labels:
+    samples.operator.openshift.io/managed: "true"
+  name: todo-psql-example
+  namespace: openshift
+  resourceVersion: "11575"
+  uid: 8179f000-2efa-485d-925b-96c92b83d115
+objects:
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: ${NAME}
+  stringData:
+    database-password: ${DATABASE_PASSWORD}
+    database-user: ${DATABASE_USER}
+    todo-secret-key: ${TODO_SECRET_KEY}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes and load balances the application pods
+      service.alpha.openshift.io/dependencies: '[{"name": "${DATABASE_SERVICE_NAME}",
+        "kind": "Service"}]'
+    name: ${NAME}
+  spec:
+    ports:
+    - name: web
+      port: 3000
+      targetPort: 3000
+    selector:
+      name: ${NAME}
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    name: ${NAME}
+  spec:
+    host: ${APPLICATION_DOMAIN}
+    to:
+      kind: Service
+      name: ${NAME}
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      description: Keeps track of changes in the application image
+    name: ${NAME}
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the application server
+      template.alpha.openshift.io/wait-for-ready: "true"
+    name: ${NAME}
+  spec:
+    replicas: 1
+    selector:
+      name: ${NAME}
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: ${NAME}
+        name: ${NAME}
+      spec:
+        containers:
+        - env:
+          - name: DATABASE_SERVICE_NAME
+            value: ${DATABASE_SERVICE_NAME}
+          - name: DATABASE_ENGINE
+            value: ${DATABASE_ENGINE}
+          - name: DATABASE_NAME
+            value: ${DATABASE_NAME}
+          - name: DATABASE_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: ${NAME}
+          - name: DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: ${NAME}
+          - name: APP_CONFIG
+            value: ${APP_CONFIG}
+          - name: TODO_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                key: todo-secret-key
+                name: ${NAME}
+          image: ' '
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            timeoutSeconds: 3
+          name: todo-psql-example
+          ports:
+          - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 3
+            timeoutSeconds: 3
+          resources:
+            limits:
+              memory: ${MEMORY_LIMIT}
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - todo-psql-example
+        from:
+          kind: ImageStreamTag
+          name: ${NAME}:latest
+      type: ImageChange
+    - type: ConfigChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      description: Exposes the database server
+    name: ${DATABASE_SERVICE_NAME}
+  spec:
+    ports:
+    - name: postgresql
+      port: 5432
+      targetPort: 5432
+    selector:
+      name: ${DATABASE_SERVICE_NAME}
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      description: Defines how to deploy the database
+      template.alpha.openshift.io/wait-for-ready: "true"
+    name: ${DATABASE_SERVICE_NAME}
+  spec:
+    replicas: 1
+    selector:
+      name: ${DATABASE_SERVICE_NAME}
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: ${DATABASE_SERVICE_NAME}
+        name: ${DATABASE_SERVICE_NAME}
+      spec:
+        containers:
+        - env:
+          - name: POSTGRESQL_USER
+            valueFrom:
+              secretKeyRef:
+                key: database-user
+                name: ${NAME}
+          - name: POSTGRESQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: database-password
+                name: ${NAME}
+          - name: POSTGRESQL_DATABASE
+            value: ${DATABASE_NAME}
+          image: ' '
+          livenessProbe:
+            exec:
+              command:
+              - /usr/libexec/check-container
+              - --live
+            initialDelaySeconds: 120
+            timeoutSeconds: 10
+          name: postgresql
+          ports:
+          - containerPort: 5432
+          readinessProbe:
+            exec:
+              command:
+              - /usr/libexec/check-container
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+          resources:
+            limits:
+              memory: ${MEMORY_POSTGRESQL_LIMIT}
+          volumeMounts:
+          - mountPath: /var/lib/pgsql/data
+            name: data
+        volumes:
+        - emptyDir: {}
+          name: data
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - postgresql
+        from:
+          kind: ImageStreamTag
+          name: postgresql:${POSTGRESQL_VERSION}
+          namespace: ${NAMESPACE}
+      type: ImageChange
+    - type: ConfigChange
+parameters:
+- description: The name assigned to all of the frontend objects defined in this template.
+  displayName: Name
+  name: NAME
+  required: true
+  value: todo-psql-example
+- description: The OpenShift Namespace where the ImageStream resides.
+  displayName: Namespace
+  name: NAMESPACE
+  required: true
+  value: openshift
+- description: Version of PostgreSQL image to be used (10-el8, 12-el8, or latest).
+  displayName: Version of PostgreSQL Image
+  name: POSTGRESQL_VERSION
+  required: true
+  value: 12-el8
+- description: Maximum amount of memory the Django container can use.
+  displayName: Memory Limit
+  name: MEMORY_LIMIT
+  required: true
+  value: 512Mi
+- description: Maximum amount of memory the PostgreSQL container can use.
+  displayName: Memory Limit (PostgreSQL)
+  name: MEMORY_POSTGRESQL_LIMIT
+  required: true
+  value: 512Mi
+- description: The exposed hostname that will route to the Todo service, if left
+    blank a value will be defaulted.
+  displayName: Application Hostname
+  name: APPLICATION_DOMAIN
+- displayName: Database Service Name
+  name: DATABASE_SERVICE_NAME
+  required: true
+  value: postgresql
+- description: 'Database engine: postgresql, mysql or sqlite (default).'
+  displayName: Database Engine
+  name: DATABASE_ENGINE
+  required: true
+  value: postgresql
+- displayName: Database Name
+  name: DATABASE_NAME
+  required: true
+  value: default
+- displayName: Database Username
+  name: DATABASE_USER
+  required: true
+  value: todo
+- displayName: Database User Password
+  from: '[a-zA-Z0-9]{16}'
+  generate: expression
+  name: DATABASE_PASSWORD
+- description: Relative path to Gunicorn configuration file (optional).
+  displayName: Application Configuration File Path
+  name: APP_CONFIG
+- description: Set this to a long random string.
+  displayName: Todo Secret Key
+  from: '[\w]{50}'
+  generate: expression
+  name: TODO_SECRET_KEY
